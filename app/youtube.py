@@ -146,6 +146,18 @@ class YouTubeClient:
                     token = await self.get_access_token()
                     headers["Authorization"] = f"Bearer {token}"
                     continue
+                # ---------------- DEBUG ----------------
+                if response.status_code >= 400:
+                    print("\n========== YOUTUBE API ERROR ==========")
+                    print("URL:", response.request.url)
+                    print("Status:", response.status_code)
+                    try:
+                        print("Response:", response.text)
+                    except Exception:
+                        print("Raw Response:", response.content)
+                    print("=======================================\n")
+                # ---------------------------------------
+
                 response.raise_for_status()
                 if not response.content:
                     return {}
