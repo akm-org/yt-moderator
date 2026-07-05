@@ -12,10 +12,6 @@ services:
         value: production
       - key: BASE_URL
         sync: false
-      - key: DATABASE_URL
-        value: sqlite:////data/moderator.db
-      - key: LOG_FILE
-        value: /data/logs/app.log
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_USERNAME
@@ -36,7 +32,3 @@ services:
         generateValue: true
       - key: DISCORD_WEBHOOK
         sync: false
-    disk:
-      name: comment-guardian-data
-      mountPath: /data
-      sizeGB: 1

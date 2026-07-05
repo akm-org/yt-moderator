@@ -1,6 +1,6 @@
 # YouTube AI Moderator
 
-Production-ready FastAPI service for moderating YouTube live chat with local spam scoring, Gemini JSON moderation, YouTube Live Streaming API actions, a Bootstrap admin dashboard, SQLite persistence, WebSocket live updates, Docker support, and deployment-friendly configuration.
+Production-ready FastAPI service for moderating YouTube live chat with local spam scoring, Gemini JSON moderation, YouTube Live Streaming API actions, a Bootstrap admin dashboard, WebSocket live updates, Docker support, and deployment-friendly configuration.
 
 ## What it does
 
@@ -10,7 +10,7 @@ Production-ready FastAPI service for moderating YouTube live chat with local spa
 - Sends suspicious messages to Gemini and requires strict JSON decisions.
 - Applies allow, warn, delete, timeout, or ban actions using YouTube APIs when `AUTO_MODERATE=true`.
 - Tracks users, warnings, timeouts, bans, spam history, AI history, logs, audit events, API usage, health, and analytics.
-- Provides dashboard, live chat, moderation queue, logs, settings, statistics, user lookup, analytics, CSV export, SQLite backup, restore, Discord notifications, and WebSocket updates.
+- Provides dashboard, live chat, moderation queue, logs, settings, statistics, user lookup, analytics, CSV export, Discord notifications, and WebSocket updates.
 
 ## Quick start
 
@@ -38,7 +38,6 @@ The app runs without Google credentials so you can inspect the dashboard locally
 | --- | --- |
 | `SECRET_KEY` | Signed session cookie secret. Change before deployment. |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Initial admin account created on first boot. |
-| `DATABASE_URL` | Defaults to `sqlite:///./moderator.db`. |
 | `GEMINI_API_KEY` | Gemini API key. |
 | `GEMINI_MODEL` | Defaults to `gemini-3.5-flash`. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth web client credentials. |
@@ -98,7 +97,7 @@ https://your-deployed-app.example/auth/callback
 https://your-deployed-app.example/auth/login?token=make-a-long-random-token
 ```
 
-After your friend signs in and approves access, the app stores the refresh token and their YouTube channel ID in SQLite. The live-chat worker uses that stored channel automatically, so your friend does not need to send a refresh token manually.
+After your friend signs in and approves access, the app stores the refresh token and their YouTube channel ID for the running service. The live-chat worker uses that connected channel automatically, so your friend does not need to send a refresh token manually.
 
 For local testing with localhost, use:
 
@@ -139,8 +138,7 @@ Recommended: deploy with the included `render.yaml` Blueprint.
 - Build command: `pip install -r requirements.txt`
 - Start command: `python run.py`
 - Health check: `/health`
-- Persistent disk mounted at `/data`
-- SQLite database at `sqlite:////data/moderator.db`
+- No database service or persistent disk required
 
 Set these Render environment variables after the service is created:
 
@@ -160,7 +158,7 @@ Manual Web Service setup also works:
 - Add all environment variables in the Render dashboard.
 - Set `BASE_URL` to the Render service URL.
 
-Use a persistent disk if you keep SQLite. Without a disk, Render restarts can erase the database. For higher traffic, move `DATABASE_URL` to Postgres and keep the SQLAlchemy models unchanged.
+This Render setup does not require creating a database service.
 
 ## Railway
 
@@ -217,7 +215,7 @@ YouTube actions:
 
 - Change `SECRET_KEY` and `ADMIN_PASSWORD`.
 - Use HTTPS and `SECURE_COOKIES=true` in production.
-- Keep `.env`, SQLite databases, logs, and backups out of source control.
+- Keep `.env`, logs, and backups out of source control.
 - The admin UI uses signed sessions, PBKDF2 password hashing, CSRF checks, input validation, and rate limiting.
 - API keys and OAuth tokens are never rendered in templates.
 
@@ -227,7 +225,6 @@ YouTube actions:
 - **OAuth redirect mismatch**: `BASE_URL` must match the Google Cloud authorized redirect URI exactly.
 - **403 from YouTube**: confirm the YouTube Data API v3 is enabled and the OAuth scopes include `youtube.force-ssl`.
 - **Gemini skipped**: set `GEMINI_API_KEY`; lower `AI min score` if messages are not suspicious enough.
-- **SQLite locked**: avoid frequent backup/restore during active live streams; use Postgres for high write volume.
 - **Dashboard loads but no live messages**: check `/health`, logs, and the connection pill in the navbar.
 
 ## Verified API references
