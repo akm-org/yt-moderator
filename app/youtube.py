@@ -39,6 +39,7 @@ class YouTubeClient:
         self.refresh_token = refresh_token or settings.google_refresh_token
         self._access_token: str | None = None
         self._access_token_expires_at: float = 0
+        self._last_search_time: float = 0
 
     @property
     def configured(self) -> bool:
@@ -161,8 +162,14 @@ class YouTubeClient:
         if not self.configured:
             raise YouTubeNotConfigured("YouTube OAuth credentials are not configured")
 
-        # Use Search API instead of liveBroadcasts because
-        # Google rejects mine=true with broadcastStatus=active.
+        import time
+
+        # Check every 15 seconds while waiting for a stream.
+        if time.time() - self._last_search_time < 15:
+            return None
+
+        self._last_search_time = time.time()
+
         fallback_channel_id = channel_id or self.settings.channel_id
         if not fallback_channel_id:
             return None
@@ -175,7 +182,7 @@ class YouTubeClient:
                 "channelId": fallback_channel_id,
                 "eventType": "live",
                 "type": "video",
-                "maxResults": 5,
+                "maxResults": 1,
             },
         )
         video_ids = [
