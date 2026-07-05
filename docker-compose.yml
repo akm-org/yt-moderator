@@ -1,0 +1,14 @@
+services:
+  yt-ai-moderator:
+    build: .
+    container_name: yt-ai-moderator
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+      - ./moderator.db:/app/moderator.db
+    restart: unless-stopped
+

@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: comment-guardian
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: BASE_URL
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:////data/moderator.db
+      - key: LOG_FILE
+        value: /data/logs/app.log
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: CHANNEL_ID
+        sync: false
+      - key: YOUTUBE_SETUP_TOKEN
+        generateValue: true
+      - key: DISCORD_WEBHOOK
+        sync: false
+    disk:
+      name: comment-guardian-data
+      mountPath: /data
+      sizeGB: 1

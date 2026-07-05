@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Statistics - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Statistics</h1>
+        <p>Moderation totals and AI category mix.</p>
+    </div>
+</div>
+
+<div class="metric-grid mb-4">
+    <div class="metric-tile"><i class="bi bi-chat-dots"></i><span>Total messages</span><strong>{{ stats.messages_total }}</strong></div>
+    <div class="metric-tile"><i class="bi bi-exclamation-octagon"></i><span>Spam detected</span><strong>{{ stats.spam_detected }}</strong></div>
+    <div class="metric-tile"><i class="bi bi-stars"></i><span>Gemini calls</span><strong>{{ stats.gemini_requests }}</strong></div>
+    <div class="metric-tile"><i class="bi bi-youtube"></i><span>YouTube calls</span><strong>{{ stats.youtube_requests }}</strong></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-6">
+        <section class="panel">
+            <div class="panel-header"><h2>Actions</h2></div>
+            <canvas id="actionChart" height="140"></canvas>
+        </section>
+    </div>
+    <div class="col-12 col-xl-6">
+        <section class="panel">
+            <div class="panel-header"><h2>AI Categories</h2></div>
+            <canvas id="categoryChart" height="140"></canvas>
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+window.statisticsData = {
+  actions: {{ action_counts|json|safe }},
+  categories: {{ category_counts|json|safe }}
+};
+</script>
+{% endblock %}
+

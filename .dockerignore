@@ -1,0 +1,10 @@
+.env
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+moderator.db
+moderator.db-*
+logs/*
+backups/*
+

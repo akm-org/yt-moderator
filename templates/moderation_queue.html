@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Moderation Queue - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Moderation Queue</h1>
+        <p>Warnings, deletes, timeouts, and bans.</p>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+            <tr><th>Time</th><th>User</th><th>Message</th><th>Score</th><th>Decision</th><th>Manual</th></tr>
+            </thead>
+            <tbody>
+            {% for msg in queue %}
+            <tr>
+                <td class="text-nowrap">{{ msg.received_at|dt }}</td>
+                <td><a href="/users/{{ msg.author_channel_id }}">{{ msg.username }}</a></td>
+                <td class="table-message">{{ msg.message }}</td>
+                <td><span class="score-pill score-{{ 'high' if msg.spam_score >= 70 else 'mid' if msg.spam_score >= 40 else 'low' }}">{{ msg.spam_score|int }}</span></td>
+                <td>
+                    <span class="action-pill action-{{ msg.final_action }}">{{ msg.final_action }}</span>
+                    <div class="small text-secondary">{{ msg.ai_reason or msg.spam_reasons|join(', ') }}</div>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        {% for action in ['allow','delete','timeout','ban'] %}
+                        <button class="btn btn-outline-secondary moderate-btn" data-message-id="{{ msg.id }}" data-action="{{ action }}" title="{{ action|title }}">
+                            {% if action == 'allow' %}<i class="bi bi-check2"></i>{% endif %}
+                            {% if action == 'delete' %}<i class="bi bi-trash"></i>{% endif %}
+                            {% if action == 'timeout' %}<i class="bi bi-hourglass"></i>{% endif %}
+                            {% if action == 'ban' %}<i class="bi bi-person-x"></i>{% endif %}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-secondary">Queue is empty.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

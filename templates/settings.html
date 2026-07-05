@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Settings - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Settings</h1>
+        <p>Moderation thresholds, filters, and integrations.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/backup"><i class="bi bi-database-down me-1"></i>Backup</a>
+        <a class="btn btn-outline-danger" href="/auth/youtube/start"><i class="bi bi-youtube me-1"></i>OAuth</a>
+    </div>
+</div>
+
+{% if saved %}
+<div class="alert alert-success">Settings saved.</div>
+{% endif %}
+
+<section class="panel mb-4">
+    <div class="panel-header">
+        <h2>YouTube Connection</h2>
+        <a class="btn btn-sm btn-outline-danger" href="/auth/youtube/start"><i class="bi bi-youtube me-1"></i>Admin OAuth</a>
+    </div>
+    {% set connected_channel = connection.channel if connection.channel else none %}
+    {% if connected_channel %}
+    <div class="connected-channel">
+        {% if connected_channel.thumbnail %}
+        <img src="{{ connected_channel.thumbnail }}" alt="">
+        {% endif %}
+        <div>
+            <strong>{{ connected_channel.title }}</strong>
+            <span>{{ connected_channel.id }}</span>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-secondary">No YouTube channel has been connected yet.</p>
+    {% endif %}
+    {% if settings.youtube_setup_token %}
+    <div class="input-group mt-3">
+        <span class="input-group-text">Friend link</span>
+        <input class="form-control" readonly value="{{ settings.base_url }}/auth/login?token={{ settings.youtube_setup_token }}">
+    </div>
+    {% else %}
+    <div class="alert alert-warning mb-0">Set <code>YOUTUBE_SETUP_TOKEN</code> to create a friend authorization link.</div>
+    {% endif %}
+</section>
+
+<form method="post" action="/settings" class="settings-grid" id="settingsForm" data-autosave="true">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <section class="panel">
+        <div class="panel-header"><h2>Scoring</h2></div>
+        <label class="form-label">Spam sensitivity</label>
+        <input class="form-range" type="range" name="spam_sensitivity" min="0.5" max="2" step="0.1" value="{{ runtime.spam_sensitivity }}">
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label class="form-label">AI min score</label>
+                <input class="form-control" type="number" name="ai_min_score" min="0" max="100" value="{{ runtime.ai_min_score }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label">Emoji limit</label>
+                <input class="form-control" type="number" name="emoji_limit" min="0" max="100" value="{{ runtime.emoji_limit }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label">Caps limit</label>
+                <input class="form-control" type="number" name="caps_limit" min="0" max="1" step="0.01" value="{{ runtime.caps_limit }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label">Warning limit</label>
+                <input class="form-control" type="number" name="warning_limit" min="0" max="20" value="{{ runtime.warning_limit }}">
+            </div>
+        </div>
+        <div class="toggle-list mt-3">
+            {% for key, label in [('ai_enabled','AI moderation'),('profanity_filter','Profanity filter'),('link_filter','Link filter'),('raid_protection','Raid protection')] %}
+            <label class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="{{ key }}" {% if runtime[key] %}checked{% endif %}>
+                <span class="form-check-label">{{ label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2>Actions</h2></div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label class="form-label">Delete threshold</label>
+                <input class="form-control" type="number" name="delete_threshold" min="0" max="100" value="{{ runtime.delete_threshold }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label">Timeout threshold</label>
+                <input class="form-control" type="number" name="timeout_threshold" min="0" max="100" value="{{ runtime.timeout_threshold }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label">Timeout seconds</label>
+                <input class="form-control" type="number" name="timeout_duration" min="1" value="{{ runtime.timeout_duration }}">
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label">Ban duration</label>
+                <input class="form-control" type="number" name="ban_duration" min="0" value="{{ runtime.ban_duration }}">
+            </div>
+            <div class="col-12">
+                <label class="form-label">Slow mode suggestion threshold</label>
+                <input class="form-control" type="number" name="slow_mode_suggestion_threshold" min="1" value="{{ runtime.slow_mode_suggestion_threshold }}">
+            </div>
+        </div>
+    </section>
+
+    <section class="panel list-panel">
+        <div class="panel-header"><h2>Whitelist</h2></div>
+        <textarea class="form-control" name="whitelist" rows="8">{{ runtime.whitelist|textarea }}</textarea>
+    </section>
+    <section class="panel list-panel">
+        <div class="panel-header"><h2>Blacklist</h2></div>
+        <textarea class="form-control" name="blacklist" rows="8">{{ runtime.blacklist|textarea }}</textarea>
+    </section>
+    <section class="panel list-panel">
+        <div class="panel-header"><h2>Temporary Whitelist</h2></div>
+        <textarea class="form-control" name="temporary_whitelist" rows="8">{{ runtime.temporary_whitelist|textarea }}</textarea>
+    </section>
+    <section class="panel list-panel">
+        <div class="panel-header"><h2>Keyword Alerts</h2></div>
+        <textarea class="form-control" name="keyword_alerts" rows="8">{{ runtime.keyword_alerts|textarea }}</textarea>
+    </section>
+
+    <section class="panel restore-panel">
+        <div class="panel-header"><h2>Restore Database</h2></div>
+        <div class="input-group">
+            <input type="file" class="form-control" name="upload" form="restoreForm" accept=".db,.sqlite,.sqlite3">
+            <button class="btn btn-outline-warning" form="restoreForm" type="submit"><i class="bi bi-upload me-1"></i>Restore</button>
+        </div>
+    </section>
+
+    <div class="settings-actions">
+        <button class="btn btn-primary btn-lg" type="submit"><i class="bi bi-check2-circle me-1"></i>Save Settings</button>
+    </div>
+</form>
+
+<form id="restoreForm" method="post" action="/restore" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+</form>
+{% endblock %}

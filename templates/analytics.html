@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Analytics - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Analytics</h1>
+        <p>Risk trends and repeated offender patterns.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-7">
+        <section class="panel">
+            <div class="panel-header"><h2>Hourly Risk</h2></div>
+            <canvas id="hourlyChart" height="130"></canvas>
+        </section>
+    </div>
+    <div class="col-12 col-xl-5">
+        <section class="panel">
+            <div class="panel-header"><h2>Top Risk Users</h2></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>User</th><th>Warnings</th><th>Timeouts</th><th>Bans</th><th>Score</th></tr></thead>
+                    <tbody>
+                    {% for user in top_users %}
+                    <tr>
+                        <td><a href="/users/{{ user.channel_id }}">{{ user.username }}</a></td>
+                        <td>{{ user.warnings }}</td>
+                        <td>{{ user.timeouts }}</td>
+                        <td>{{ user.bans }}</td>
+                        <td><span class="score-pill score-{{ 'high' if user.last_spam_score >= 70 else 'mid' if user.last_spam_score >= 40 else 'low' }}">{{ user.last_spam_score|int }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-secondary">No risk users yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+window.analyticsData = {
+  labels: {{ hourly|map(attribute=0)|list|json|safe }},
+  messages: {{ hourly|map(attribute=1)|list|json|safe }},
+  avgSpam: {{ hourly|map(attribute=2)|list|json|safe }}
+};
+</script>
+{% endblock %}
+

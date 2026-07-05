@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Live Chat - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Live Chat</h1>
+        <p>{{ connection.broadcast.title if connection.broadcast else connection.message }}</p>
+    </div>
+    <span class="badge text-bg-info">WebSocket /ws/livechat</span>
+</div>
+
+<section class="panel chat-panel">
+    <div id="liveChatList" class="chat-stream">
+        {% for msg in messages %}
+        <article class="chat-row action-{{ msg.final_action }}">
+            <div class="chat-meta">
+                <a href="/users/{{ msg.author_channel_id }}">{{ msg.username }}</a>
+                <span>{{ msg.received_at|dt }}</span>
+                <span class="score-pill score-{{ 'high' if msg.spam_score >= 70 else 'mid' if msg.spam_score >= 40 else 'low' }}">{{ msg.spam_score|int }}</span>
+                <span class="action-pill action-{{ msg.final_action }}">{{ msg.final_action }}</span>
+            </div>
+            <p>{{ msg.message }}</p>
+        </article>
+        {% else %}
+        <div class="empty-state">Waiting for live chat messages.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>window.enableLiveSocket = true;</script>
+{% endblock %}
+

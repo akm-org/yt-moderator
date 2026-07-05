@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }}{% endblock %}
+{% block content %}
+<section class="public-hero">
+    <div class="public-copy">
+        <span class="eyebrow"><i class="bi bi-youtube me-1"></i>Live chat protection</span>
+        <h1>{{ app_name }}</h1>
+        <p>
+            Connect a YouTube channel, monitor live chat in real time, score spam locally,
+            ask Gemini for risky messages, and apply warnings, deletes, timeouts, or bans from one dashboard.
+        </p>
+        <div class="public-actions">
+            <a class="btn btn-primary btn-lg" href="/login"><i class="bi bi-shield-lock me-1"></i>Admin Login</a>
+            <a class="btn btn-outline-secondary btn-lg" href="/health"><i class="bi bi-heart-pulse me-1"></i>Health</a>
+        </div>
+    </div>
+    <div class="public-preview">
+        <div class="preview-top">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="preview-grid">
+            <div><strong>Live</strong><span>WebSocket chat feed</span></div>
+            <div><strong>AI</strong><span>Gemini JSON decisions</span></div>
+            <div><strong>Rules</strong><span>Flood, scam, caps, links</span></div>
+            <div><strong>Audit</strong><span>Logs, exports, backups</span></div>
+        </div>
+        <div class="preview-row danger"><span>Scam link detected</span><b>timeout</b></div>
+        <div class="preview-row warning"><span>Repeated message</span><b>warn</b></div>
+        <div class="preview-row good"><span>Normal chat</span><b>allow</b></div>
+    </div>
+</section>
+
+<section class="public-band">
+    <div>
+        <h2>For channel owners and moderators</h2>
+        <p>
+            Deploy it on Render, set your Google OAuth and Gemini credentials, then use the YouTube
+            authorization link to let a channel owner connect safely without sharing their password.
+        </p>
+    </div>
+    <a class="btn btn-outline-light" href="/login"><i class="bi bi-arrow-right-circle me-1"></i>Open Dashboard</a>
+</section>
+{% endblock %}

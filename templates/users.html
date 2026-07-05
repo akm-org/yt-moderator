@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Users - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>User Lookup</h1>
+        <p>Warnings, timeouts, bans, and message history.</p>
+    </div>
+</div>
+
+<section class="panel mb-4">
+    <form class="row g-2" method="get" action="/users">
+        <div class="col">
+            <input class="form-control" name="q" value="{{ q }}" placeholder="Search username or channel id">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>User</th><th>Channel ID</th><th>Warnings</th><th>Timeouts</th><th>Bans</th><th>Last score</th><th>Last seen</th></tr></thead>
+            <tbody>
+            {% for user in users %}
+            <tr>
+                <td><a href="/users/{{ user.channel_id }}">{{ user.username }}</a></td>
+                <td class="text-truncate channel-cell">{{ user.channel_id }}</td>
+                <td>{{ user.warnings }}</td>
+                <td>{{ user.timeouts }}</td>
+                <td>{{ user.bans }}</td>
+                <td><span class="score-pill score-{{ 'high' if user.last_spam_score >= 70 else 'mid' if user.last_spam_score >= 40 else 'low' }}">{{ user.last_spam_score|int }}</span></td>
+                <td class="text-nowrap">{{ user.last_seen|dt }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-secondary">No users found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

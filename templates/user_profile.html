@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>{{ user.username }}</h1>
+        <p>{{ user.channel_id }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge text-bg-warning">Warnings {{ user.warnings }}</span>
+        <span class="badge text-bg-info">Timeouts {{ user.timeouts }}</span>
+        <span class="badge text-bg-danger">Bans {{ user.bans }}</span>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-7">
+        <section class="panel">
+            <div class="panel-header"><h2>Messages</h2></div>
+            <div class="chat-stream compact">
+                {% for msg in messages %}
+                <article class="chat-row action-{{ msg.final_action }}">
+                    <div class="chat-meta">
+                        <span>{{ msg.received_at|dt }}</span>
+                        <span class="score-pill score-{{ 'high' if msg.spam_score >= 70 else 'mid' if msg.spam_score >= 40 else 'low' }}">{{ msg.spam_score|int }}</span>
+                        <span class="action-pill action-{{ msg.final_action }}">{{ msg.final_action }}</span>
+                    </div>
+                    <p>{{ msg.message }}</p>
+                </article>
+                {% else %}
+                <div class="empty-state">No messages recorded.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+    <div class="col-12 col-xl-5">
+        <section class="panel">
+            <div class="panel-header"><h2>Actions</h2></div>
+            <div class="action-feed">
+                {% for action in actions %}
+                <article>
+                    <span class="action-pill action-{{ action.action }}">{{ action.action }}</span>
+                    <div>
+                        <strong>{{ action.created_at|dt }}</strong>
+                        <p>{{ action.reason }}</p>
+                    </div>
+                </article>
+                {% else %}
+                <p class="text-secondary mb-0">No actions recorded.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Dashboard</h1>
+        <p>{{ connection.message or 'Runtime overview' }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/auth/youtube/start"><i class="bi bi-youtube me-1"></i>Connect YouTube</a>
+        <a class="btn btn-primary" href="/chat"><i class="bi bi-broadcast me-1"></i>Live Chat</a>
+    </div>
+</div>
+
+<div class="metric-grid">
+    {% set metric_cards = [
+        ('Messages/min', stats.messages_per_minute, 'bi-activity'),
+        ('Spam detected', stats.spam_detected, 'bi-exclamation-triangle'),
+        ('Warnings', stats.warnings, 'bi-megaphone'),
+        ('Timeouts', stats.timeouts, 'bi-hourglass-split'),
+        ('Bans', stats.bans, 'bi-person-x'),
+        ('Gemini requests', stats.gemini_requests, 'bi-stars'),
+        ('API usage', stats.api_usage, 'bi-cloud-check'),
+        ('Uptime', stats.uptime, 'bi-clock-history')
+    ] %}
+    {% for label, value, icon in metric_cards %}
+    <div class="metric-tile">
+        <i class="bi {{ icon }}"></i>
+        <span>{{ label }}</span>
+        <strong data-stat="{{ label|lower|replace('/', '_')|replace(' ', '_') }}">{{ value }}</strong>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-12 col-xl-7">
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Message Volume</h2>
+                <span class="text-secondary">Last 2 hours</span>
+            </div>
+            <canvas id="messageChart" height="120"></canvas>
+        </section>
+    </div>
+    <div class="col-12 col-xl-5">
+        <section class="panel">
+            <div class="panel-header">
+                <h2>System</h2>
+                <span class="text-secondary">Live process</span>
+            </div>
+            <div class="system-list">
+                <div><span>CPU</span><strong id="cpuValue">{{ stats.system.cpu_percent }}%</strong></div>
+                <div><span>RAM</span><strong id="ramValue">{{ stats.system.ram_percent }}%</strong></div>
+                <div><span>Process RSS</span><strong>{{ stats.system.process_rss_mb }} MB</strong></div>
+                <div><span>Livestream</span><strong>{{ connection.broadcast.title if connection.broadcast else 'None' }}</strong></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <div class="col-12 col-xl-7">
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Live Messages</h2>
+                <a href="/chat">Open</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>User</th><th>Message</th><th>Score</th><th>Action</th></tr></thead>
+                    <tbody id="dashboardMessages">
+                    {% for msg in messages %}
+                    <tr>
+                        <td><a href="/users/{{ msg.author_channel_id }}">{{ msg.username }}</a></td>
+                        <td class="text-truncate table-message">{{ msg.message }}</td>
+                        <td><span class="score-pill score-{{ 'high' if msg.spam_score >= 70 else 'mid' if msg.spam_score >= 40 else 'low' }}">{{ msg.spam_score|int }}</span></td>
+                        <td><span class="action-pill action-{{ msg.final_action }}">{{ msg.final_action }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-secondary">No messages yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-12 col-xl-5">
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Recent Actions</h2>
+                <a href="/moderation">Review</a>
+            </div>
+            <div class="action-feed" id="actionFeed">
+                {% for action in actions %}
+                <article>
+                    <span class="action-pill action-{{ action.action }}">{{ action.action }}</span>
+                    <div>
+                        <strong>{{ action.username }}</strong>
+                        <p>{{ action.reason }}</p>
+                    </div>
+                </article>
+                {% else %}
+                <p class="text-secondary mb-0">No moderation actions yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+window.dashboardChartData = {{ stats.chart|json|safe }};
+window.enableLiveSocket = true;
+</script>
+{% endblock %}
+

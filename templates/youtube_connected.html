@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}YouTube Connected - {{ app_name }}{% endblock %}
+{% block content %}
+<section class="login-panel">
+    <div class="login-card">
+        <div class="brand-mark"><i class="bi {% if success %}bi-youtube{% else %}bi-exclamation-triangle{% endif %}"></i></div>
+        {% if success %}
+        <h1>YouTube connected</h1>
+        <p class="text-secondary">The moderator can now use this channel after credentials are configured.</p>
+        {% if channel %}
+        <div class="connected-channel">
+            {% if channel.thumbnail %}
+            <img src="{{ channel.thumbnail }}" alt="">
+            {% endif %}
+            <div>
+                <strong>{{ channel.title or 'YouTube channel' }}</strong>
+                <span>{{ channel.id }}</span>
+            </div>
+        </div>
+        {% endif %}
+        {% else %}
+        <h1>Connection failed</h1>
+        <p class="text-secondary">{{ error or 'Google did not return an authorization code.' }}</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+

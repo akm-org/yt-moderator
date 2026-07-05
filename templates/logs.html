@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Logs - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Logs</h1>
+        <p>Application events and admin activity.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="/logs/export.csv"><i class="bi bi-download me-1"></i>Export CSV</a>
+</div>
+
+<section class="panel mb-4">
+    <form class="row g-2" method="get" action="/logs">
+        <div class="col">
+            <input class="form-control" name="q" value="{{ q }}" placeholder="Search logs">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i>Search</button>
+        </div>
+    </form>
+</section>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-8">
+        <section class="panel">
+            <div class="panel-header"><h2>System Logs</h2></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Time</th><th>Level</th><th>Event</th><th>Message</th></tr></thead>
+                    <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td class="text-nowrap">{{ log.created_at|dt }}</td>
+                        <td><span class="badge text-bg-{{ 'danger' if log.level == 'ERROR' else 'warning' if log.level == 'WARNING' else 'secondary' }}">{{ log.level }}</span></td>
+                        <td>{{ log.event }}</td>
+                        <td class="table-message">{{ log.message }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-secondary">No logs found.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <div class="col-12 col-xl-4">
+        <section class="panel">
+            <div class="panel-header"><h2>Admin Activity</h2></div>
+            <div class="action-feed">
+                {% for audit in audits %}
+                <article>
+                    <span class="badge text-bg-secondary">{{ audit.action }}</span>
+                    <div>
+                        <strong>{{ audit.username or 'system' }}</strong>
+                        <p>{{ audit.created_at|dt }}</p>
+                    </div>
+                </article>
+                {% else %}
+                <p class="text-secondary mb-0">No admin activity yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
