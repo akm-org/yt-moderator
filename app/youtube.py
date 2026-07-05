@@ -146,18 +146,6 @@ class YouTubeClient:
                     token = await self.get_access_token()
                     headers["Authorization"] = f"Bearer {token}"
                     continue
-                # ---------------- DEBUG ----------------
-                if response.status_code >= 400:
-                    print("\n========== YOUTUBE API ERROR ==========")
-                    print("URL:", response.request.url)
-                    print("Status:", response.status_code)
-                    try:
-                        print("Response:", response.text)
-                    except Exception:
-                        print("Raw Response:", response.content)
-                    print("=======================================\n")
-                # ---------------------------------------
-
                 response.raise_for_status()
                 if not response.content:
                     return {}
@@ -173,30 +161,8 @@ class YouTubeClient:
         if not self.configured:
             raise YouTubeNotConfigured("YouTube OAuth credentials are not configured")
 
-        broadcasts = await self._request(
-            "GET",
-            "liveBroadcasts",
-            params={
-                "part": "snippet,contentDetails,status",
-                "broadcastStatus": "active",
-                "broadcastType": "all",
-                "mine": "true",
-                "maxResults": 5,
-            },
-        )
-        for item in broadcasts.get("items", []):
-            live_chat_id = (item.get("snippet") or {}).get("liveChatId")
-            video_id = item.get("id")
-            if live_chat_id and video_id:
-                snippet = item.get("snippet") or {}
-                return LiveBroadcast(
-                    video_id=video_id,
-                    live_chat_id=live_chat_id,
-                    title=snippet.get("title", "Untitled live stream"),
-                    channel_title=snippet.get("channelTitle", ""),
-                    started_at=snippet.get("actualStartTime"),
-                )
-
+        # Use Search API instead of liveBroadcasts because
+        # Google rejects mine=true with broadcastStatus=active.
         fallback_channel_id = channel_id or self.settings.channel_id
         if not fallback_channel_id:
             return None
