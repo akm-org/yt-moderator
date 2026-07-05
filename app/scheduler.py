@@ -5,6 +5,7 @@ from typing import Any
 
 from app.config import Settings
 from app.database import new_session
+from app.models import AdminUser
 from app.moderation import ModerationService, get_bot_state, set_bot_state
 from app.utils import log_event, notify_discord, record_api_usage
 from app.websocket import ConnectionManager
@@ -49,7 +50,13 @@ class LiveChatWorker:
         while not self._stop_event.is_set():
             db = new_session()
             try:
-                refresh_token = get_bot_state(db, "youtube_refresh_token") or self.settings.google_refresh_token
+                active_account_id = get_bot_state(db, "active_account_id")
+                active_account = db.get(AdminUser, int(active_account_id)) if active_account_id else None
+                refresh_token = (
+                    (active_account.youtube_refresh_token if active_account else None)
+                    or get_bot_state(db, "youtube_refresh_token")
+                    or self.settings.google_refresh_token
+                )
                 client = YouTubeClient(self.settings, refresh_token=refresh_token)
                 if not client.configured:
                     set_bot_state(db, "connection", {"connected": False, "message": "YouTube OAuth not configured"})
@@ -93,7 +100,13 @@ class LiveChatWorker:
     async def _find_or_refresh_broadcast(self, client: YouTubeClient, db) -> LiveBroadcast | None:
         if self._current_broadcast:
             return self._current_broadcast
-        channel_id = get_bot_state(db, "youtube_channel_id") or self.settings.channel_id
+        active_account_id = get_bot_state(db, "active_account_id")
+        active_account = db.get(AdminUser, int(active_account_id)) if active_account_id else None
+        channel_id = (
+            (active_account.youtube_channel_id if active_account else None)
+            or get_bot_state(db, "youtube_channel_id")
+            or self.settings.channel_id
+        )
         broadcast = await client.find_active_livestream(channel_id=channel_id)
         if broadcast:
             self._current_broadcast = broadcast

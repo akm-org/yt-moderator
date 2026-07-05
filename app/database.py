@@ -62,6 +62,27 @@ def init_db() -> None:
     from app import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    _run_lightweight_migrations()
+
+
+def _run_lightweight_migrations() -> None:
+    if not database_url.startswith("sqlite"):
+        return
+    with engine.begin() as connection:
+        rows = connection.exec_driver_sql("PRAGMA table_info(admin_users)").fetchall()
+        columns = {row[1] for row in rows}
+        migrations = {
+            "role": "ALTER TABLE admin_users ADD COLUMN role VARCHAR(20) DEFAULT 'user' NOT NULL",
+            "youtube_refresh_token": "ALTER TABLE admin_users ADD COLUMN youtube_refresh_token TEXT",
+            "youtube_channel_id": "ALTER TABLE admin_users ADD COLUMN youtube_channel_id VARCHAR(255)",
+            "youtube_channel": "ALTER TABLE admin_users ADD COLUMN youtube_channel JSON DEFAULT '{}' NOT NULL",
+        }
+        for column, sql in migrations.items():
+            if column not in columns:
+                connection.exec_driver_sql(sql)
+        connection.exec_driver_sql(
+            "UPDATE admin_users SET role = 'admin' WHERE role IS NULL OR role = ''"
+        )
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -74,4 +95,3 @@ def get_db() -> Generator[Session, None, None]:
 
 def new_session() -> Session:
     return SessionLocal()
-

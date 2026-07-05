@@ -54,8 +54,12 @@ async def validate_csrf(request: Request) -> None:
 def create_or_update_initial_admin(db: Session, username: str, password: str) -> AdminUser:
     admin = db.query(AdminUser).filter(AdminUser.username == username).first()
     if admin:
+        if admin.role != "admin":
+            admin.role = "admin"
+            db.add(admin)
+            db.commit()
         return admin
-    admin = AdminUser(username=username, password_hash=hash_password(password), is_active=True)
+    admin = AdminUser(username=username, password_hash=hash_password(password), role="admin", is_active=True)
     db.add(admin)
     db.commit()
     db.refresh(admin)
@@ -77,6 +81,7 @@ def authenticate_admin(db: Session, username: str, password: str) -> AdminUser |
 def login_admin(request: Request, db: Session, admin: AdminUser) -> None:
     request.session["admin_id"] = admin.id
     request.session["admin_username"] = admin.username
+    request.session["admin_role"] = admin.role
     request.session["login_at"] = utcnow().isoformat()
     ensure_csrf_token(request)
     audit_event(
@@ -132,3 +137,39 @@ def require_admin(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Login required")
     return admin
 
+
+def require_super_admin(
+    admin: Annotated[AdminUser, Depends(require_admin)],
+) -> AdminUser:
+    if admin.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+    return admin
+
+
+def create_login_user(db: Session, *, username: str, password: str, role: str = "user") -> AdminUser:
+    username = username.strip()
+    if not username:
+        raise ValueError("Username is required")
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    if role not in {"admin", "user"}:
+        raise ValueError("Invalid role")
+    existing = db.query(AdminUser).filter(AdminUser.username == username).first()
+    if existing:
+        raise ValueError("Username already exists")
+    row = AdminUser(
+        username=username,
+        password_hash=hash_password(password),
+        role=role,
+        is_active=True,
+    )
+    db.add(row)
+    db.flush()
+    return row
+
+
+def update_login_user_password(db: Session, user: AdminUser, password: str) -> None:
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    user.password_hash = hash_password(password)
+    db.add(user)

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}My YouTube - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>My YouTube</h1>
+        <p>Connect the YouTube channel this account will moderate.</p>
+    </div>
+    <a class="btn btn-danger" href="/auth/youtube/start"><i class="bi bi-youtube me-1"></i>Connect YouTube</a>
+</div>
+
+{% if request.query_params.get('oauth') == 'connected' %}
+<div class="alert alert-success">YouTube connected successfully.</div>
+{% elif request.query_params.get('oauth') == 'error' %}
+<div class="alert alert-danger">YouTube connection failed.</div>
+{% endif %}
+
+<section class="panel">
+    <div class="panel-header"><h2>Connected Channel</h2></div>
+    {% if channel %}
+    <div class="connected-channel">
+        {% if channel.thumbnail %}
+        <img src="{{ channel.thumbnail }}" alt="">
+        {% endif %}
+        <div>
+            <strong>{{ channel.title or 'YouTube channel' }}</strong>
+            <span>{{ channel.id }}</span>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-secondary mb-0">No YouTube channel connected yet. Click Connect YouTube and sign in with the channel owner account.</p>
+    {% endif %}
+</section>
+{% endblock %}

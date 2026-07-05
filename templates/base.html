@@ -27,6 +27,7 @@
                     ('/moderation', 'bi-filter-square', 'Queue'),
                     ('/logs', 'bi-journal-text', 'Logs'),
                     ('/settings', 'bi-sliders', 'Settings'),
+                    ('/my-youtube', 'bi-youtube', 'My YouTube'),
                     ('/statistics', 'bi-bar-chart-line', 'Statistics'),
                     ('/users', 'bi-person-lines-fill', 'Users'),
                     ('/analytics', 'bi-graph-up-arrow', 'Analytics')
@@ -38,6 +39,13 @@
                     </a>
                 </li>
                 {% endfor %}
+                {% if admin.role == 'admin' %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.url.path == '/accounts' %}active{% endif %}" href="/accounts">
+                        <i class="bi bi-people me-1"></i>Accounts
+                    </a>
+                </li>
+                {% endif %}
             </ul>
             <div class="d-flex align-items-center gap-2">
                 <span id="connection-pill" class="badge rounded-pill {% if connection.connected %}text-bg-success{% else %}text-bg-secondary{% endif %}">
@@ -78,4 +86,3 @@
 {% block scripts %}{% endblock %}
 </body>
 </html>
-

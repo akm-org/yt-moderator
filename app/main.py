@@ -31,6 +31,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from app.auth import (
     authenticate_admin,
+    create_login_user,
     create_or_update_initial_admin,
     current_admin_optional,
     ensure_csrf_token,
@@ -38,6 +39,8 @@ from app.auth import (
     login_limiter,
     logout_admin,
     require_admin,
+    require_super_admin,
+    update_login_user_password,
     validate_csrf,
 )
 from app.config import BASE_DIR, Settings, get_settings
@@ -215,6 +218,18 @@ def template_context(
     return context
 
 
+def user_refresh_token(user: AdminUser | None, db: Session) -> str | None:
+    if user and user.youtube_refresh_token:
+        return user.youtube_refresh_token
+    return get_bot_state(db, "youtube_refresh_token") or settings.google_refresh_token or None
+
+
+def user_channel(user: AdminUser | None, db: Session) -> dict[str, Any] | None:
+    if user and user.youtube_channel:
+        return user.youtube_channel
+    return get_bot_state(db, "youtube_channel")
+
+
 def redirect(path: str) -> RedirectResponse:
     return RedirectResponse(path, status_code=303)
 
@@ -225,6 +240,16 @@ def get_refresh_token(db: Session) -> str | None:
 
 def get_connected_channel(db: Session) -> dict[str, Any] | None:
     return get_bot_state(db, "youtube_channel")
+
+
+def sync_global_youtube_from_user(db: Session, user: AdminUser, channel: dict[str, Any] | None) -> None:
+    if user.youtube_refresh_token:
+        set_bot_state(db, "youtube_refresh_token", user.youtube_refresh_token)
+    if channel:
+        set_bot_state(db, "youtube_channel", channel)
+        if channel.get("id"):
+            set_bot_state(db, "youtube_channel_id", channel["id"])
+    set_bot_state(db, "active_account_id", user.id)
 
 
 def stats_payload(request: Request, db: Session) -> dict[str, Any]:
@@ -430,6 +455,111 @@ async def settings_page(
         request,
         "settings.html",
         template_context(request, db, admin, saved=saved, defaults=DEFAULT_RUNTIME_SETTINGS),
+    )
+
+
+@app.get("/accounts", response_class=HTMLResponse)
+async def accounts_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    admin: Annotated[AdminUser, Depends(require_super_admin)],
+):
+    accounts = db.query(AdminUser).order_by(AdminUser.created_at.desc()).all()
+    return templates.TemplateResponse(
+        request,
+        "accounts.html",
+        template_context(request, db, admin, accounts=accounts, error=None),
+    )
+
+
+@app.post("/accounts")
+async def accounts_create(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    admin: Annotated[AdminUser, Depends(require_super_admin)],
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    role: Annotated[str, Form()] = "user",
+):
+    await validate_csrf(request)
+    try:
+        account = create_login_user(db, username=username, password=password, role=role)
+        audit_event(
+            db,
+            admin.id,
+            admin.username,
+            "account_create",
+            request.client.host if request.client else None,
+            request.headers.get("user-agent"),
+            {"created_user": account.username, "role": account.role},
+        )
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        accounts = db.query(AdminUser).order_by(AdminUser.created_at.desc()).all()
+        return templates.TemplateResponse(
+            request,
+            "accounts.html",
+            template_context(request, db, admin, accounts=accounts, error=str(exc)),
+            status_code=400,
+        )
+    return redirect("/accounts")
+
+
+@app.post("/accounts/{account_id}")
+async def accounts_update(
+    request: Request,
+    account_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    admin: Annotated[AdminUser, Depends(require_super_admin)],
+):
+    await validate_csrf(request)
+    account = db.get(AdminUser, account_id)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    form = await request.form()
+    action = str(form.get("action", ""))
+    if action == "toggle":
+        if account.id == admin.id:
+            raise HTTPException(status_code=400, detail="You cannot disable your own account")
+        account.is_active = not account.is_active
+    elif action == "role":
+        role = str(form.get("role", "user"))
+        if role not in {"admin", "user"}:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        account.role = role
+    elif action == "password":
+        update_login_user_password(db, account, str(form.get("password", "")))
+    elif action == "clear_youtube":
+        account.youtube_refresh_token = None
+        account.youtube_channel_id = None
+        account.youtube_channel = {}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+    db.add(account)
+    audit_event(
+        db,
+        admin.id,
+        admin.username,
+        "account_update",
+        request.client.host if request.client else None,
+        request.headers.get("user-agent"),
+        {"target": account.username, "action": action},
+    )
+    db.commit()
+    return redirect("/accounts")
+
+
+@app.get("/my-youtube", response_class=HTMLResponse)
+async def my_youtube_page(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    admin: Annotated[AdminUser, Depends(require_admin)],
+):
+    return templates.TemplateResponse(
+        request,
+        "my_youtube.html",
+        template_context(request, db, admin, channel=user_channel(admin, db)),
     )
 
 
@@ -681,7 +811,7 @@ async def youtube_auth_start(
     db: Annotated[Session, Depends(get_db)],
     admin: Annotated[AdminUser, Depends(require_admin)],
 ):
-    client = YouTubeClient(settings, refresh_token=get_refresh_token(db))
+    client = YouTubeClient(settings, refresh_token=user_refresh_token(admin, db))
     try:
         url, state = client.build_auth_url()
     except YouTubeNotConfigured as exc:
@@ -689,6 +819,7 @@ async def youtube_auth_start(
         db.commit()
         return redirect("/settings?oauth=missing")
     request.session["youtube_oauth_state"] = state
+    request.session["youtube_oauth_account_id"] = admin.id
     return RedirectResponse(url, status_code=302)
 
 
@@ -744,13 +875,22 @@ async def youtube_friend_callback(
 
     client = YouTubeClient(settings, refresh_token=get_refresh_token(db))
     token = await client.exchange_code(code, callback_path="/auth/callback")
+    guest_account = None
+    if request.session.get("admin_id"):
+        guest_account = db.get(AdminUser, int(request.session["admin_id"]))
     if token.get("refresh_token"):
         set_bot_state(db, "youtube_refresh_token", token["refresh_token"])
+        if guest_account:
+            guest_account.youtube_refresh_token = token["refresh_token"]
     channel = await client.get_my_channel()
     if channel:
         set_bot_state(db, "youtube_channel", channel)
         if channel.get("id"):
             set_bot_state(db, "youtube_channel_id", channel["id"])
+        if guest_account:
+            guest_account.youtube_channel = channel
+            guest_account.youtube_channel_id = channel.get("id")
+            db.add(guest_account)
     set_bot_state(db, "connection", {"connected": False, "message": "YouTube OAuth connected; waiting for live stream"})
     log_event(
         db,
@@ -778,24 +918,31 @@ async def youtube_auth_callback(
     db: Session = Depends(get_db),
 ):
     expected_state = request.session.get("youtube_oauth_state")
+    account_id = request.session.get("youtube_oauth_account_id") or request.session.get("admin_id")
     if error:
         log_event(db, "ERROR", "youtube_oauth_error", error, {})
         db.commit()
-        return redirect("/settings?oauth=error")
+        return redirect("/my-youtube?oauth=error")
     if not code or not state or state != expected_state:
         raise HTTPException(status_code=400, detail="Invalid OAuth callback")
-    client = YouTubeClient(settings, refresh_token=get_refresh_token(db))
+    account = db.get(AdminUser, int(account_id)) if account_id else None
+    if not account:
+        raise HTTPException(status_code=400, detail="OAuth account session expired")
+    client = YouTubeClient(settings, refresh_token=user_refresh_token(account, db))
     token = await client.exchange_code(code)
     if token.get("refresh_token"):
-        set_bot_state(db, "youtube_refresh_token", token["refresh_token"])
+        account.youtube_refresh_token = token["refresh_token"]
     channel = await client.get_my_channel()
     if channel:
-        set_bot_state(db, "youtube_channel", channel)
-        if channel.get("id"):
-            set_bot_state(db, "youtube_channel_id", channel["id"])
+        account.youtube_channel = channel
+        account.youtube_channel_id = channel.get("id")
+    db.add(account)
+    sync_global_youtube_from_user(db, account, channel)
     log_event(db, "INFO", "youtube_oauth_connected", "YouTube OAuth connected", {})
     db.commit()
-    return redirect("/settings?oauth=connected")
+    request.session.pop("youtube_oauth_state", None)
+    request.session.pop("youtube_oauth_account_id", None)
+    return redirect("/my-youtube?oauth=connected")
 
 
 @app.get("/logs/export.csv")

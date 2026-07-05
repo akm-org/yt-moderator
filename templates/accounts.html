@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Accounts - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <h1>Accounts</h1>
+        <p>Create logins for people, then they can connect their own YouTube channel.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-12 col-xl-4">
+        <section class="panel">
+            <div class="panel-header"><h2>Create Account</h2></div>
+            <form method="post" action="/accounts" class="stacked-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div>
+                    <label class="form-label">Username</label>
+                    <input class="form-control" name="username" required>
+                </div>
+                <div>
+                    <label class="form-label">Password</label>
+                    <input class="form-control" name="password" type="password" minlength="8" required>
+                </div>
+                <div>
+                    <label class="form-label">Role</label>
+                    <select class="form-select" name="role">
+                        <option value="user" selected>User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" type="submit"><i class="bi bi-person-plus me-1"></i>Create</button>
+            </form>
+        </section>
+    </div>
+    <div class="col-12 col-xl-8">
+        <section class="panel">
+            <div class="panel-header"><h2>People</h2></div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>User</th><th>Role</th><th>YouTube</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td>
+                            <strong>{{ account.username }}</strong>
+                            <div class="small text-secondary">{{ account.created_at|dt }}</div>
+                        </td>
+                        <td>
+                            <form method="post" action="/accounts/{{ account.id }}" class="d-flex gap-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="action" value="role">
+                                <select class="form-select form-select-sm" name="role" onchange="this.form.submit()">
+                                    <option value="user" {% if account.role == 'user' %}selected{% endif %}>User</option>
+                                    <option value="admin" {% if account.role == 'admin' %}selected{% endif %}>Admin</option>
+                                </select>
+                            </form>
+                        </td>
+                        <td>
+                            {% if account.youtube_channel_id %}
+                            <span class="badge text-bg-success">Connected</span>
+                            <div class="small text-secondary">{{ account.youtube_channel.title if account.youtube_channel else account.youtube_channel_id }}</div>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Not connected</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if account.is_active %}text-bg-success{% else %}text-bg-danger{% endif %}">
+                                {% if account.is_active %}Active{% else %}Disabled{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-2">
+                                <form method="post" action="/accounts/{{ account.id }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="action" value="toggle">
+                                    <button class="btn btn-sm btn-outline-secondary" type="submit">
+                                        {% if account.is_active %}<i class="bi bi-pause"></i>{% else %}<i class="bi bi-play"></i>{% endif %}
+                                    </button>
+                                </form>
+                                <form method="post" action="/accounts/{{ account.id }}" class="d-flex gap-1">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="action" value="password">
+                                    <input class="form-control form-control-sm password-mini" name="password" type="password" minlength="8" placeholder="New password">
+                                    <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-key"></i></button>
+                                </form>
+                                {% if account.youtube_channel_id %}
+                                <form method="post" action="/accounts/{{ account.id }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="action" value="clear_youtube">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit"><i class="bi bi-youtube"></i></button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+

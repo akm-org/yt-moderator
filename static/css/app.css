@@ -348,6 +348,10 @@ body {
     max-width: 280px;
 }
 
+.password-mini {
+    width: 150px;
+}
+
 .score-pill,
 .action-pill {
     display: inline-flex;

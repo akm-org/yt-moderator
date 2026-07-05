@@ -30,7 +30,22 @@ uvicorn app.main:app --reload
 
 Open http://localhost:8000 for the public site, then sign in at `/login` with `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
 
+Default local admin credentials:
+
+```text
+username: admin
+password: change-me-now
+```
+
+Change `ADMIN_PASSWORD` before deployment.
+
 The app runs without Google credentials so you can inspect the dashboard locally. Live moderation starts after Gemini and YouTube credentials are configured.
+
+## Accounts
+
+The first account is the admin account from `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+
+Admins can open `/accounts` to create usernames and passwords for other people. Normal users can log in, open **My YouTube**, and connect their own YouTube channel with Google OAuth. They cannot create other users unless their role is changed to `admin`.
 
 ## Environment variables
 

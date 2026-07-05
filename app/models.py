@@ -27,9 +27,13 @@ class AdminUser(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String(80), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), default="user", nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
+    youtube_refresh_token = Column(Text, nullable=True)
+    youtube_channel_id = Column(String(255), nullable=True, index=True)
+    youtube_channel = Column(JSON, default=dict, nullable=False)
 
 
 class RuntimeSetting(Base):
@@ -174,4 +178,3 @@ class ApiUsage(Base):
     status = Column(String(40), default="ok", nullable=False)
     latency_ms = Column(Float, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
-
