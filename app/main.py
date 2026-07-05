@@ -839,7 +839,7 @@ async def youtube_friend_login(
 
     client = YouTubeClient(settings, refresh_token=get_refresh_token(db))
     try:
-        url, state = client.build_auth_url(callback_path="/auth/callback")
+        url, state = client.build_auth_url(callback_path="/callback")
     except YouTubeNotConfigured as exc:
         log_event(db, "ERROR", "youtube_friend_oauth_start_failed", str(exc), {})
         db.commit()
@@ -849,32 +849,60 @@ async def youtube_friend_login(
     return RedirectResponse(url, status_code=302)
 
 
+@app.get("/callback", response_class=HTMLResponse)
 @app.get("/auth/callback", response_class=HTMLResponse)
-async def youtube_friend_callback(
+async def youtube_oauth_callback(
     request: Request,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
     db: Session = Depends(get_db),
 ):
-    expected_state = request.session.get("youtube_friend_oauth_state")
+    expected_user_state = request.session.get("youtube_oauth_state")
+    account_id = request.session.get("youtube_oauth_account_id") or request.session.get("admin_id")
+    expected_friend_state = request.session.get("youtube_friend_oauth_state")
     setup_token = request.session.get("youtube_friend_setup_token")
     if error:
-        log_event(db, "ERROR", "youtube_friend_oauth_error", error, {})
+        log_event(db, "ERROR", "youtube_oauth_error", error, {})
         db.commit()
+        if account_id:
+            return redirect("/my-youtube?oauth=error")
         return templates.TemplateResponse(
             request,
             "youtube_connected.html",
             template_context(request, db, None, success=False, error=error, channel=None),
             status_code=400,
         )
+    if not code:
+        raise HTTPException(status_code=400, detail="Invalid OAuth callback")
+
+    if account_id and expected_user_state and state == expected_user_state:
+        account = db.get(AdminUser, int(account_id))
+        if not account:
+            raise HTTPException(status_code=400, detail="OAuth account session expired")
+        client = YouTubeClient(settings, refresh_token=user_refresh_token(account, db))
+        token = await client.exchange_code(code, callback_path="/callback")
+        if token.get("refresh_token"):
+            account.youtube_refresh_token = token["refresh_token"]
+        channel = await client.get_my_channel()
+        if channel:
+            account.youtube_channel = channel
+            account.youtube_channel_id = channel.get("id")
+        db.add(account)
+        sync_global_youtube_from_user(db, account, channel)
+        log_event(db, "INFO", "youtube_oauth_connected", "YouTube OAuth connected", {"account": account.username})
+        db.commit()
+        request.session.pop("youtube_oauth_state", None)
+        request.session.pop("youtube_oauth_account_id", None)
+        return redirect("/my-youtube?oauth=connected")
+
     if not setup_token or setup_token != settings.youtube_setup_token:
         raise HTTPException(status_code=403, detail="Invalid setup session")
-    if not code or not state or state != expected_state:
+    if not expected_friend_state or state != expected_friend_state:
         raise HTTPException(status_code=400, detail="Invalid OAuth callback")
 
     client = YouTubeClient(settings, refresh_token=get_refresh_token(db))
-    token = await client.exchange_code(code, callback_path="/auth/callback")
+    token = await client.exchange_code(code, callback_path="/callback")
     guest_account = None
     if request.session.get("admin_id"):
         guest_account = db.get(AdminUser, int(request.session["admin_id"]))
@@ -917,32 +945,7 @@ async def youtube_auth_callback(
     error: str | None = None,
     db: Session = Depends(get_db),
 ):
-    expected_state = request.session.get("youtube_oauth_state")
-    account_id = request.session.get("youtube_oauth_account_id") or request.session.get("admin_id")
-    if error:
-        log_event(db, "ERROR", "youtube_oauth_error", error, {})
-        db.commit()
-        return redirect("/my-youtube?oauth=error")
-    if not code or not state or state != expected_state:
-        raise HTTPException(status_code=400, detail="Invalid OAuth callback")
-    account = db.get(AdminUser, int(account_id)) if account_id else None
-    if not account:
-        raise HTTPException(status_code=400, detail="OAuth account session expired")
-    client = YouTubeClient(settings, refresh_token=user_refresh_token(account, db))
-    token = await client.exchange_code(code)
-    if token.get("refresh_token"):
-        account.youtube_refresh_token = token["refresh_token"]
-    channel = await client.get_my_channel()
-    if channel:
-        account.youtube_channel = channel
-        account.youtube_channel_id = channel.get("id")
-    db.add(account)
-    sync_global_youtube_from_user(db, account, channel)
-    log_event(db, "INFO", "youtube_oauth_connected", "YouTube OAuth connected", {})
-    db.commit()
-    request.session.pop("youtube_oauth_state", None)
-    request.session.pop("youtube_oauth_account_id", None)
-    return redirect("/my-youtube?oauth=connected")
+    return await youtube_oauth_callback(request, code=code, state=state, error=error, db=db)
 
 
 @app.get("/logs/export.csv")

@@ -71,11 +71,16 @@ Admins can open `/accounts` to create usernames and passwords for other people. 
 5. Add this authorized redirect URI:
 
 ```text
-http://localhost:8000/auth/youtube/callback
-http://localhost:8000/auth/callback
+http://localhost:8000/callback
 ```
 
 For production, replace localhost with your deployed `BASE_URL`.
+
+For example, if Render gives you `https://yt-moderator-akm.onrender.com`, add exactly:
+
+```text
+https://yt-moderator-akm.onrender.com/callback
+```
 
 Required scopes:
 
@@ -103,7 +108,7 @@ YOUTUBE_SETUP_TOKEN=make-a-long-random-token
 3. Add this redirect URI in Google Cloud:
 
 ```text
-https://your-deployed-app.example/auth/callback
+https://your-deployed-app.example/callback
 ```
 
 4. Send your friend only this link:
@@ -117,7 +122,7 @@ After your friend signs in and approves access, the app stores the refresh token
 For local testing with localhost, use:
 
 ```text
-http://localhost:8000/auth/callback
+http://localhost:8000/callback
 http://localhost:8000/auth/login?token=make-a-long-random-token
 ```
 

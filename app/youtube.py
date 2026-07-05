@@ -48,7 +48,7 @@ class YouTubeClient:
             and self.refresh_token
         )
 
-    def build_auth_url(self, state: str | None = None, *, callback_path: str = "/auth/youtube/callback") -> tuple[str, str]:
+    def build_auth_url(self, state: str | None = None, *, callback_path: str = "/callback") -> tuple[str, str]:
         if not self.settings.google_client_id:
             raise YouTubeNotConfigured("GOOGLE_CLIENT_ID is not configured")
         state = state or secrets.token_urlsafe(24)
@@ -64,7 +64,7 @@ class YouTubeClient:
         }
         return f"{AUTH_URL}?{urlencode(params)}", state
 
-    async def exchange_code(self, code: str, *, callback_path: str = "/auth/youtube/callback") -> dict[str, Any]:
+    async def exchange_code(self, code: str, *, callback_path: str = "/callback") -> dict[str, Any]:
         if not self.settings.google_client_id or not self.settings.google_client_secret:
             raise YouTubeNotConfigured("Google OAuth client ID/secret are not configured")
         payload = {
